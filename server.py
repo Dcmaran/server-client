@@ -6,6 +6,10 @@ HOST = ''  # IP local
 PORT = 5000  # Porta de escuta
 BUFFER_SIZE = 1024
 
+lost_packets = []
+
+seq_num = 0
+
 # Cria um socket TCP/IP
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -35,15 +39,34 @@ with client_socket:
         try:
             data = client_socket.recv(BUFFER_SIZE)
 
+            if not data:
+                break
+
+            # Separa o número de sequência e a mensagem
+            received_seq_num, message = data.decode().split(',')
+
+            # Converte o número de sequência para inteiro
+            received_seq_num = int(received_seq_num)
+
+            # Verifica se o número de sequência é esperado
+            #if received_seq_num != seq_num:
+            #    print('Pacote fora de ordem ou duplicado')
+            #    continue
+
             # Confirma recebimento da mensagem
-            client_socket.sendall(b'ACK')
+            #client_socket.sendall(b'ACK')
+
+            # Envia uma confirmação para o cliente
+            client_socket.sendall(str(seq_num).encode())
             
             print('Mensagem recebida:', data.decode())
 
-            if not data:
-                break
+            # Incrementa o número de sequência
+            seq_num += 1
+
         except:
-            print("PACOTE PERDIDO")
+            print("PACOTE PERDIDO - TEMPO LIMITE EXCEDIDO")
+            seq_num += 1
             
 
     # Fecha a conexão com o cliente
