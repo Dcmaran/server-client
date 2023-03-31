@@ -6,8 +6,6 @@ HOST = ''  # IP local
 PORT = 5000  # Porta de escuta
 BUFFER_SIZE = 1024
 
-lost_packets = []
-
 seq_num = 0
 
 # Cria um socket TCP/IP
@@ -43,7 +41,7 @@ with client_socket:
                 break
 
             # Separa o número de sequência e a mensagem
-            received_seq_num, message = data.decode().split(',')
+            msg_id, received_seq_num, message = data.decode().split(',')
 
             # Converte o número de sequência para inteiro
             received_seq_num = int(received_seq_num)
@@ -54,18 +52,19 @@ with client_socket:
             #    continue
 
             # Confirma recebimento da mensagem
-            #client_socket.sendall(b'ACK')
+            client_socket.sendall(b'ACK')
 
             # Envia uma confirmação para o cliente
-            client_socket.sendall(str(seq_num).encode())
+            #client_socket.sendall(str(seq_num).encode())
             
             print('Mensagem recebida:', data.decode())
 
             # Incrementa o número de sequência
-            seq_num += 1
+            #seq_num += 1
 
         except:
             print("PACOTE PERDIDO - TEMPO LIMITE EXCEDIDO")
+            client_socket.sendall(b'Pacote perdido')
             seq_num += 1
             
 

@@ -1,4 +1,5 @@
 import socket
+import random
 
 # Configurações do cliente
 HOST = '127.0.0.1'  # IP do servidor
@@ -23,9 +24,11 @@ with client_socket:
 
         if message == 'sair':
             break
+        
+        msg_id = random.randint(1000,9999)
 
-         # Adiciona o número de sequência à mensagem
-        message = f"{seq_num},{message}"
+        # Adiciona o número de sequência à mensagem
+        message = f"{msg_id}, {seq_num}, {message}"
 
         # Envia a mensagem
         client_socket.sendall(message.encode())
@@ -34,20 +37,17 @@ with client_socket:
         data = client_socket.recv(BUFFER_SIZE)
 
         # Converte a confirmação para inteiro
-        received_seq_num = int(data.decode())
+        received_msg = data.decode()
 
         # Verifica se o número de sequência recebido corresponde ao esperado
-        if received_seq_num != seq_num:
-            print(received_seq_num)
-            print(seq_num)
-            print('Confirmação fora de ordem')
-            received_seq_num = seq_num
+        if received_msg == 'ACK':
+            print('Confirmação recebida:', data.decode())
             seq_num += 1
+            
         else:
-            # Incrementa o número de sequência
+            print('Pacote perdido')
             seq_num += 1
 
-        print('Confirmação recebida:', data.decode())
 
 # Fecha a conexão com o servidor
 client_socket.close()
