@@ -45,34 +45,36 @@ with client_socket:
             msg_id, received_seq_num, message, checksum = data.decode().split(',')
 
             # Converte o número de sequência para inteiro
-            #received_seq_num = int(received_seq_num)
+            received_seq_num = int(received_seq_num)
 
             # Calcula a soma de verificação da mensagem
             hash_object = hashlib.sha256(message.encode())
             calc_checksum = hash_object.hexdigest()
 
+            print('Mensagem recebida:', data.decode())
+
+            print(seq_num)
+            print(received_seq_num)
+
             if checksum != calc_checksum:
                 print('Pacote fora de ordem ou inválido')
 
-            # Verifica se o número de sequência é esperado
-            #if received_seq_num != seq_num:
-            #    print('Pacote fora de ordem ou duplicado')
-            #    continue
+            #Verifica se o número de sequência é esperado
+            if received_seq_num != seq_num:
+                print('Pacote fora de ordem ou duplicado')      
 
             # Confirma recebimento da mensagem
             client_socket.sendall(b'ACK')
 
             # Envia uma confirmação para o cliente
             #client_socket.sendall(str(seq_num).encode())
-            
-            print('Mensagem recebida:', data.decode())
 
             # Incrementa o número de sequência
-            #seq_num += 1
+            seq_num += 1
 
         except:
-            print("PACOTE PERDIDO - TEMPO LIMITE EXCEDIDO")
-            client_socket.sendall(b'Pacote perdido')
+            print("TEMPO LIMITE EXCEDIDO")
+            client_socket.sendall(b'NACK')
             seq_num += 1
             
 

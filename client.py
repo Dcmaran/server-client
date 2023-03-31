@@ -49,8 +49,8 @@ with client_socket:
             print('Confirmação recebida:', data.decode())
             seq_num += 1
             
-        else:
-            print('Pacote perdido')
+        elif received_msg == 'NACK':
+            print('Pacote não reconhecido')
             seq_num += 1
 
 
