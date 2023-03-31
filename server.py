@@ -1,5 +1,6 @@
 import sys
 import socket
+import hashlib
 
 # Configurações do servidor
 HOST = ''  # IP local
@@ -41,10 +42,17 @@ with client_socket:
                 break
 
             # Separa o número de sequência e a mensagem
-            msg_id, received_seq_num, message = data.decode().split(',')
+            msg_id, received_seq_num, message, checksum = data.decode().split(',')
 
             # Converte o número de sequência para inteiro
-            received_seq_num = int(received_seq_num)
+            #received_seq_num = int(received_seq_num)
+
+            # Calcula a soma de verificação da mensagem
+            hash_object = hashlib.sha256(message.encode())
+            calc_checksum = hash_object.hexdigest()
+
+            if checksum != calc_checksum:
+                print('Pacote fora de ordem ou inválido')
 
             # Verifica se o número de sequência é esperado
             #if received_seq_num != seq_num:

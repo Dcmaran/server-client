@@ -1,5 +1,6 @@
 import socket
 import random
+import hashlib
 
 # Configurações do cliente
 HOST = '127.0.0.1'  # IP do servidor
@@ -27,8 +28,12 @@ with client_socket:
         
         msg_id = random.randint(1000,9999)
 
+        # Calcula a soma de verificação da mensagem
+        hash_object = hashlib.sha256(message.encode())
+        checksum = hash_object.hexdigest()
+
         # Adiciona o número de sequência à mensagem
-        message = f"{msg_id}, {seq_num}, {message}"
+        message = f"{msg_id},{seq_num},{message},{checksum}"
 
         # Envia a mensagem
         client_socket.sendall(message.encode())
