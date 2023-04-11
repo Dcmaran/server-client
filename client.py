@@ -118,5 +118,6 @@ with client_socket:
             break
 
 # Fecha a conexão com o servidor
+
 client_socket.close()
 print('Conexão fechada')
