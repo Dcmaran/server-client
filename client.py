@@ -12,6 +12,10 @@ PORT = 5000  # Porta do servidor
 BUFFER_SIZE = 1024
 
 TIMER =  7
+MAX_ATTEMPTS = 3
+
+validator = 0
+attempt = 0
 
 seq_num = 0
 
@@ -42,6 +46,7 @@ print('Conectado ao servidor em', (HOST, PORT))
 with client_socket:
     while True:
         try:
+            
             print(F"Digite a mensagem (você tem {TIMER} segundos): ", end='', flush=True)
             ready, _, _ = select.select([sys.stdin], [], [], TIMER)  # Timeout de 5 segundos
 
@@ -62,6 +67,8 @@ with client_socket:
 
                         mensagem = send_message(i)
 
+                        seq_num = seq_num - attempt
+
                         # Envia a mensagem
                         client_socket.sendall(mensagem.encode())
 
@@ -73,9 +80,24 @@ with client_socket:
 
                         seq_num += 1
 
+                        validator += 1
+
                         # Verifica se o número de sequência recebido corresponde ao esperado
-                        if received_msg == 'ACK':
+                        if received_msg == 'ACK' and validator == len(message):
                             print('Confirmação recebida:', data.decode())
+                            
+                            if attempt == 0:
+                                print('Todos os pacotes enviados')
+
+                            if attempt == 1:
+                                print('Reenviar 1 pacote')
+                                attempt-=1
+
+                            if attempt == 2:
+                                print('Reenviar 2 pacotes')  
+                                attempt-=1
+
+                            validator = 0
 
                 else:
                     mensagem = send_message(message)
@@ -89,16 +111,35 @@ with client_socket:
                     # Converte a confirmação para inteiro
                     received_msg = data.decode()
 
-                    seq_num += 1
-
                     # Verifica se o número de sequência recebido corresponde ao esperado
                     if received_msg == 'ACK':
                         print('Confirmação recebida:', data.decode())
 
+                        if attempt == 0:
+                            print('Todos os pacotes enviados')
+                            seq_num += 1
+
+                        if attempt == 1:
+                            print('Reenviar 1 pacote')
+                            attempt-=1
+
+                        if attempt == 2:
+                            print('Reenviar 2 pacotes')  
+                            attempt-=1
+
             else:
                 print(f"\nErro: você não digitou uma mensagem em {TIMER} segundos.")
+                print("Pacote perdido")
+                attempt += 1
+                print(attempt)
                 seq_num += 1
+
+                if attempt == MAX_ATTEMPTS:
+                    print('Não foi possível enviar a mensagem. Encerrando a conexão...')
+                    break
+
                 continue
+                
 
         except KeyboardInterrupt:
             print("\nConexão encerrada pelo usuário.")
