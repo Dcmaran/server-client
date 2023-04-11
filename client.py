@@ -2,24 +2,18 @@ import socket
 import sys
 import random
 import hashlib
-import select
-import time
+import threading
+import tkinter as tk
 
 # Configurações do cliente
 HOST = '127.0.0.1'  # IP do servidor
 PORT = 5000  # Porta do servidor
 BUFFER_SIZE = 1024
-
-TIMER =  7
-WINDOW_SIZE = 5
+TIMER = 7000  # 7 segundos
 
 seq_num = 0
-base = 0
-next_seq_num = 0
 
-buffer = {}
-
-def is_parallel(msg):
+def isParallel(msg):
     return '|' in msg
 
 def send_message(msg):
@@ -34,90 +28,106 @@ def send_message(msg):
 
     return msg
 
-def send_window(client_socket):
-    global seq_num, buffer
-    for i in range(base, min(base + WINDOW_SIZE, seq_num)):
-        if i not in buffer:
-            continue
-        msg = buffer[i]
-        client_socket.sendall(msg.encode())
-        print(f"Enviando mensagem com número de sequência {i}")
+def receive_ack(client_socket):
+    global seq_num
+    while True:
+        data = client_socket.recv(BUFFER_SIZE)
+        received_msg = data.decode()
 
-def handle_ack(client_socket):
-    global base
-    data = client_socket.recv(BUFFER_SIZE)
-    ack = data.decode()
-    if ack == 'ACK':
-        print('Confirmação recebida:', ack)
-        base += 1
+        if received_msg == 'ACK':
+            seq_num += 1
+            reset_timer()
+
+def send_message_with_ack(event=None):
+    global seq_num
+    message = entry_var.get()
+    entry_var.set('')
+
+    if message.strip() == 'sair':
+        add_to_textbox("\nConexão encerrada pelo usuário.\n")
+        client_socket.close()
+        window.quit()
+        return
+
+    if isParallel(message):
+        messages = message.split('|')
+
+        for i in messages:
+            if i.strip() == 'sair':
+                add_to_textbox("\nConexão encerrada pelo usuário.\n")
+                client_socket.close()
+                window.quit()
+                return
+
+            mensagem = send_message(i)
+            client_socket.sendall(mensagem.encode())
+            window.after(TIMER, resend_message, mensagem)
+    else:
+        mensagem = send_message(message)
+        client_socket.sendall(mensagem.encode())
+        window.after(TIMER, resend_message, mensagem)
+
+def resend_message(mensagem):
+    global seq_num
+    if seq_num == int(mensagem.split(',')[1]):
+        add_to_textbox(f'Reenviando a mensagem: {mensagem}\n')
+        client_socket.sendall(mensagem.encode())
+        window.after(TIMER, resend_message, mensagem)
+
+def add_to_textbox(text):
+    textbox.configure(state='normal')
+    textbox.insert(tk.END, text)
+    textbox.configure(state='disabled')
+    textbox.see(tk.END)
+
+def reset_timer():
+    timer_var.set(TIMER)
+
+def update_timer():
+    value = timer_var.get()
+    if value > 0:
+        value -= 100
+        timer_var.set(value)
+        window.after(100, update_timer)
+    else:
+        reset_timer()
 
 # Cria um socket TCP/IP
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # Conecta-se ao servidor
 client_socket.connect((HOST, PORT))
-client_socket.setblocking(0)
-print('Conectado ao servidor em', (HOST, PORT))
 
-# Envia mensagens para o servidor
-with client_socket:
-    while True:
-        try:
-            print(F"Digite a mensagem (você tem {TIMER} segundos): ", end='', flush=True)
-            ready, _, _ = select.select([sys.stdin], [], [], TIMER)
+# Inicializa a interface gráfica
+window = tk.Tk()
+window.title("Cliente")
 
-            if ready:
-                message = sys.stdin.readline().strip()
+entry_var = tk.StringVar()
 
-                if message == 'sair':
-                   print("\nConexão encerrada pelo usuário.")
-                   break
+textbox = tk.Text(window, wrap=tk.WORD, height=15, width=50, state='disabled')
+textbox.grid(row=0, column=0, padx=10, pady=10)
 
-                if is_parallel(message):
-                    messages = message.split('|')
-                    for m in messages:
-                        if m == 'sair':
-                            print("\nConexão encerrada pelo usuário.")
-                            exit(1)
+entry = tk.Entry(window, textvariable=entry_var, width=50)
+entry.grid(row=1, column=0, padx=10, pady=(0, 10))
+entry.bind('<Return>', send_message_with_ack)
 
-                        while next_seq_num >= base + WINDOW_SIZE:
-                            time.sleep(1)
-                            handle_ack(client_socket)
-                        
-                        msg = send_message(m)
-                        buffer[next_seq_num] = msg
-                        send_window(client_socket)
-                        next_seq_num += 1
-                        seq_num += 1
+send_button = tk.Button(window, text="Enviar", command=send_message_with_ack)
+send_button.grid(row=1, column=1, padx=(0, 10), pady=(0, 10))
 
-                else:
-                    while next_seq_num >= base + WINDOW_SIZE:
-                        time.sleep(1)
-                        handle_ack(client_socket)
-                    
-                    msg = send_message(message)
-                    buffer[next_seq_num] = msg
-                    send_window(client_socket)
-                    next_seq_num += 1
-                    seq_num += 1
+timer_var = tk.IntVar(value=TIMER)
+timer_label = tk.Label(window, textvariable=timer_var)
+timer_label.grid(row=2, column=0, padx=10, pady=(0, 10))
 
-            else:
-                print(f"\nErro: você não digitou uma mensagem em {TIMER} segundos.")
-                continue
+#Inicializa a thread para receber ACKs do servidor
+ack_thread = threading.Thread(target=receive_ack, args=(client_socket,))
+ack_thread.daemon = True
+ack_thread.start()
 
-            while base < next_seq_num:
-                ready, _, _ = select.select([client_socket], [], [], TIMER)
-                if ready:
-                    handle_ack(client_socket)
-                else:
-                    print("Reenviando mensagens...")
-                    send_window(client_socket)
+#Inicializa o temporizador
+update_timer()
 
-        except KeyboardInterrupt:
-            print("\nConexão encerrada pelo usuário.")
-            break
+#Inicia o loop principal da interface gráfica
+window.mainloop()
 
 # Fecha a conexão com o servidor
-
 client_socket.close()
-print('Conexão fechada')
