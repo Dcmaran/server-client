@@ -56,7 +56,8 @@ while True:
                 print(received_seq_num)
 
                 if checksum != calc_checksum:
-                    print('Pacote fora de ordem ou inválido')
+                    client_socket.sendall(b'NACK')
+                    print('Pacote inválido')
 
                 #Verifica se o número de sequência é esperado
                 if received_seq_num != seq_num:

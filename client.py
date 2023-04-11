@@ -17,6 +17,8 @@ MAX_ATTEMPTS = 3
 validator = 0
 attempt = 0
 
+cont_pack = 0
+
 seq_num = 0
 
 def isParallel(msg):
@@ -81,10 +83,10 @@ with client_socket:
                         seq_num += 1
 
                         validator += 1
-
+                            
                         # Verifica se o número de sequência recebido corresponde ao esperado
-                        if received_msg == 'ACK' and validator == len(message):
-                            print('Confirmação recebida:', data.decode())
+                        if received_msg == 'ACK':
+                            print(f'Confirmação individual pacote {seq_num} recebida:', data.decode())
                             
                             if attempt == 0:
                                 print('Todos os pacotes enviados')
@@ -97,7 +99,14 @@ with client_socket:
                                 print('Reenviar 2 pacotes')  
                                 attempt-=1
 
+                            cont_pack += 1
+
                             validator = 0
+
+                        if cont_pack == len(message):
+                            print('Confirmacao do lote recebida: ACK')
+
+
 
                 else:
                     mensagem = send_message(message)
@@ -126,6 +135,11 @@ with client_socket:
                         if attempt == 2:
                             print('Reenviar 2 pacotes')  
                             attempt-=1
+
+                    if received_msg == 'NACK':
+                        print("Pacote com falha de integridade", data.decode())
+                        print('Reenviar 1 pacote')
+
 
             else:
                 print(f"\nErro: você não digitou uma mensagem em {TIMER} segundos.")
