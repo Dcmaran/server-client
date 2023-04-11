@@ -2,8 +2,6 @@ import sys
 import socket
 import hashlib
 
-#SERVIDOR REAL OFICIAL
-
 # Configurações do servidor
 HOST = ''  # IP local
 PORT = 5000  # Porta de escuta
@@ -40,33 +38,35 @@ while True:
                 if not data:
                     break
 
-                # Separa o número de sequência e a mensagem
-                msg_id, received_seq_num, message, checksum = data.decode().split(',')
+                # Converte a lista de mensagens para uma lista Python
+                messages = data.decode().split('|')
+                
+                # Processa cada mensagem individualmente
+                for msg in messages:
+                    # Separa o número de sequência e a mensagem
+                    msg_id, received_seq_num, message, checksum = msg.split(',')
 
-                # Converte o número de sequência para inteiro
-                received_seq_num = int(received_seq_num)
+                    # Converte o número de sequência para inteiro
+                    received_seq_num = int(received_seq_num)
 
-                # Calcula a soma de verificação da mensagem
-                hash_object = hashlib.sha256(message.encode())
-                calc_checksum = hash_object.hexdigest()
+                    # Calcula a soma de verificação da mensagem
+                    hash_object = hashlib.sha256(message.encode())
+                    calc_checksum = hash_object.hexdigest()
 
-                print('Mensagem recebida:', data.decode())
+                    print('Mensagem recebida:', msg)
 
-                print(seq_num)
-                print(received_seq_num)
+                    if checksum != calc_checksum:
+                        print('Pacote fora de ordem ou inválido')
 
-                if checksum != calc_checksum:
-                    print('Pacote fora de ordem ou inválido')
+                    #Verifica se o número de sequência é esperado
+                    if received_seq_num != seq_num:
+                        print('Pacote fora de ordem ou duplicado')      
 
-                #Verifica se o número de sequência é esperado
-                if received_seq_num != seq_num:
-                    print('Pacote fora de ordem ou duplicado')      
+                    # Confirma recebimento da mensagem
+                    client_socket.sendall(b'ACK')
 
-                # Confirma recebimento da mensagem
-                client_socket.sendall(b'ACK')
-
-                # Incrementa o número de sequência
-                seq_num += 1
+                    # Incrementa o número de sequência
+                    seq_num += 1
 
     except ConnectionResetError:
         print('Conexão encerrada abruptamente pelo cliente')
