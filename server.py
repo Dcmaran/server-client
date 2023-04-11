@@ -2,8 +2,6 @@ import sys
 import socket
 import hashlib
 
-#SERVIDOR REAL OFICIAL
-
 # Configurações do servidor
 HOST = ''  # IP local
 PORT = 5000  # Porta de escuta
@@ -15,26 +13,23 @@ seq_num = 0
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # Associa o socket a um endereço e porta
-server_socket.bind((HOST, PORT)) #.bind() method is used to associate the socket with a specific network 
+server_socket.bind((HOST, PORT))
 
 # Escuta conexões
-server_socket.listen()  #.listen() enables a server to accept connections
+server_socket.listen()
 print('Servidor iniciado em', (HOST, PORT))
 
 # Espera por conexões
 while True:
     try:
         # Aceita a conexão do cliente
-        client_socket, address = server_socket.accept() #The .accept() method blocks execution and waits for an incoming connection.
-        #it returns a new socket object representing the connection(client_socket) and a tuple holding the address of the client(address)
-        #A socket function or method that temporarily suspends your application is a blocking call.
-
+        client_socket, address = server_socket.accept()
         print('Conexão estabelecida com', address)
 
         # Recebe mensagens do cliente
         with client_socket:
             while True:
-                
+
                 data = client_socket.recv(BUFFER_SIZE)
 
                 if not data:
@@ -55,18 +50,12 @@ while True:
                 print(seq_num)
                 print(received_seq_num)
 
-                if checksum != calc_checksum:
-                    print('Pacote fora de ordem ou inválido')
-
-                #Verifica se o número de sequência é esperado
-                if received_seq_num != seq_num:
-                    print('Pacote fora de ordem ou duplicado')      
-
-                # Confirma recebimento da mensagem
-                client_socket.sendall(b'ACK')
-
-                # Incrementa o número de sequência
-                seq_num += 1
+                if received_seq_num != seq_num or checksum != calc_checksum:
+                    print('Pacote fora de ordem, inválido ou duplicado')
+                    client_socket.sendall(b'NAK')
+                else:
+                    client_socket.sendall(b'ACK')
+                    seq_num += 1
 
     except ConnectionResetError:
         print('Conexão encerrada abruptamente pelo cliente')
